@@ -28,13 +28,13 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev simg2img
+          # Korrektur: simg2img durch android-sdk-libsparse-utils ersetzt
+          sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev android-sdk-libsparse-utils
           pip3 install aligo pycryptodome
 
       - name: Setup Tools
         run: |
           cd ErfanGSIs
-          # Fix setup script
           sed -i 's/pycrypto//g' setup.sh
           sed -i 's/pip install/pip install --upgrade/g' setup.sh
           sudo bash setup.sh
@@ -43,11 +43,10 @@ jobs:
         run: |
           cd ErfanGSIs
           echo "Starting build process..."
-          # Build mit Error-Handling entfernt, um zu sehen was passiert
-          sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }} || echo "Build script finished with exit code"
+          sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }}
           
-          echo "Contents of output folder:"
-          ls -R output/ || echo "Output folder does not exist"
+          echo "Listing output folder:"
+          ls -R output/
 
       - name: Compress and Upload
         run: |
@@ -55,7 +54,7 @@ jobs:
           if [ -d "output" ] && [ "$(ls -A output/)" ]; then
             7za a -t7z -r ${{ github.event.inputs.REPACK_NAME }} output/*
           else
-            echo "Error: No files found to compress."
+            echo "Error: Build failed or no files found."
             exit 1
           fi
 
