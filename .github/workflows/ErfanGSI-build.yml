@@ -31,9 +31,15 @@ jobs:
           echo "BUILD_TIME=$(date +%s | md5sum | awk '{print substr($1,1,10)}')" >> $GITHUB_ENV
           echo "BUILD_sTIME=$(TZ=Asia/Shanghai date -d @$(date +%s) +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
 
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
       - name: 配置环境‌‌
         run: |
-          sudo apt install -y git wget git gzip unzip curl axel aria2 zstd rename p7zip-full pigz
+          sudo apt update
+          sudo apt install -y git wget git gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential Python3-dev
 
       - name: 获取 ErfanGSI 工具
         uses: actions/checkout@main
@@ -54,9 +60,9 @@ jobs:
         run: |
           sudo sed -i 's/USE_MIRROR_FOR_PIP\=true/USE_MIRROR_FOR_PIP\=false/' $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
           sudo bash $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
-          sudo apt-get -y --purge remove "adoptopenjdk-11-hotspot"
+          sudo apt-get -y --purge remove "adoptopenjdk-11-hotspot" || true
           java -version
-          pip3 install aligo
+          pip3 install aligo pycryptodome
 
       - name: 下载 ROM 并制作 GSI
         run: |
