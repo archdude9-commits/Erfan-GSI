@@ -6,88 +6,78 @@ on:
       ROM_URL:
         description: 'Direct link/直链'
         required: true
-        default: 'https://mirrorbits.lineageos.org/full/sagit/20230302/lineage-20.0-20230302-nightly-sagit-signed.zip'
+        default: 'https://cdnorg.d.miui.com/V14.0.4.0.TGCMIXM/miui_SPESGlobal_V14.0.4.0.TGCMIXM_69f8748327_13.0.zip'
       REPACK_NAME:
         description: 'Compressed name/打包名称'
         required: true
-        default: 'Compressed.7z'
+        default: 'a12MIUI14.7z'
       ROM_TYPE:
         description: 'ROM type/ROM 类型'
         required: true
-        default: 'Generic'
+        default: 'MIUI'
 
 jobs:
   build_tosasitill_GSI:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 获取源代码
+      - name: Checkout Code
         uses: actions/checkout@main
         with:
           path: ErfanGSIs
-
-      - name: 获取变量
-        run: |
-          echo "BUILD_TIME=$(date +%s | md5sum | awk '{print substr($1,1,10)}')" >> $GITHUB_ENV
-          echo "BUILD_sTIME=$(TZ=Asia/Shanghai date -d @$(date +%s) +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
 
       - name: Setup Python 3.8
         uses: actions/setup-python@v4
         with:
           python-version: '3.8'
 
-      - name: 配置环境‌‌
+      - name: Install System Dependencies
         run: |
           sudo apt update
-          sudo apt install -y git wget git gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev
+          sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev
 
-      - name: 获取 ErfanGSI 工具
+      - name: Clone ErfanGSI Tool
         uses: actions/checkout@main
         with:
           repository: tosasitill/erfanSGSI
           path: ErfanGSIs
 
-      - name: 更换 777 权限
+      - name: Prep and Patch
         run: |
           sudo chmod 777 -R $GITHUB_WORKSPACE/ErfanGSIs
-
-      - name: 修复意外退出 & Entschärfe pycrypto Ragebait
-        run: |
-          sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
-          sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
-          # Hier wird pycrypto im Erfan-eigenen Setup blockiert:
+          # Entferne pycrypto aus setup.sh und erzwinge Upgrade
           sed -i 's/pycrypto//g' ErfanGSIs/setup.sh
           sed -i 's/pip install/pip install --upgrade/g' ErfanGSIs/setup.sh
+          # Deaktiviere Exit bei Fehlern im url2GSI Skript
+          sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
+          sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
 
-      - name: 建立并配置 ErfanGSI 工具所需环境
+      - name: Setup Environment
         run: |
-          sudo sed -i 's/USE_MIRROR_FOR_PIP\=true/USE_MIRROR_FOR_PIP\=false/' $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
-          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
-          sudo apt-get -y --purge remove "adoptopenjdk-11-hotspot" || true
-          java -version
+          sed -i 's/USE_MIRROR_FOR_PIP\=true/USE_MIRROR_FOR_PIP\=false/' ErfanGSIs/setup.sh
+          sudo bash ErfanGSIs/setup.sh
           pip3 install aligo pycryptodome
 
-      - name: 下载 ROM 并制作 GSI
+      - name: Build GSI
         run: |
           cd ${{ github.workspace }}/ErfanGSIs/
           sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }}
 
-      - name: 压缩 GSI
-        if: ${{ github.event.inputs.ALI }} != '1'
+      - name: Compress GSI
         run: |
-          cd $GITHUB_WORKSPACE/ErfanGSIs
-          pwd
-          7za a -mmt16 -t7z -r tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }} output/*
-          ls "tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }}"
-          mkdir upload_ab
-          ls upload_ab
-          if [ $(ls -l tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }} | awk '{print $5}') -gt 2147483647 ]; then tar cvzpf - tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }} | split -d -b 1024m - upload_ab/tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }}; else mv tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }} upload_ab/tosasitillGSI0202_${{ github.event.inputs.REPACK_NAME }}; fi
+          cd ${{ github.workspace }}/ErfanGSIs
+          mkdir -p upload_ab
+          if [ -d "output" ] && [ "$(ls -A output/)" ]; then
+            7za a -t7z -r output.7z output/*
+            mv output.7z upload_ab/${{ github.event.inputs.REPACK_NAME }}
+          else
+            echo "Build failed: output directory empty"
+            exit 1
+          fi
 
-      - name: 上传至 Github Releases
-        if: ${{ github.event.inputs.ALI }} != '1'
+      - name: Upload to Release
+        if: hashFiles('ErfanGSIs/upload_ab/*') != ''
         uses: ncipollo/release-action@v1.12.0
         with:
-          artifacts: "${{ github.workspace }}/ErfanGSIs/upload_ab/*"
-          tag: "${{ github.event.inputs.REPACK_NAME }}_${{ env.BUILD_TIME }}"
-          bodyFile: "${{ github.workspace }}/ErfanGSIs/output/build_info.txt"
+          artifacts: "ErfanGSIs/upload_ab/*"
+          tag: "Build_${{ github.run_id }}"
           token: ${{ secrets.GITHUB_TOKEN }}
