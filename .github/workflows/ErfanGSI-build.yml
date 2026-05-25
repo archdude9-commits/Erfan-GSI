@@ -39,7 +39,7 @@ jobs:
       - name: 配置环境‌‌
         run: |
           sudo apt update
-          sudo apt install -y git wget git gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential Python3-dev
+          sudo apt install -y git wget git gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev
 
       - name: 获取 ErfanGSI 工具
         uses: actions/checkout@main
