@@ -23,18 +23,23 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@main
         with:
+          repository: tosasitill/erfanSGSI
           path: ErfanGSIs
 
       - name: Install Dependencies
         run: |
           sudo apt update
-          # Korrektur: simg2img durch android-sdk-libsparse-utils ersetzt
           sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev android-sdk-libsparse-utils
           pip3 install aligo pycryptodome
 
       - name: Setup Tools
         run: |
+          # Debug: Wo sind wir?
+          pwd
+          ls -F
           cd ErfanGSIs
+          # Hier prüfen wir nochmal die Struktur
+          ls -F
           sed -i 's/pycrypto//g' setup.sh
           sed -i 's/pip install/pip install --upgrade/g' setup.sh
           sudo bash setup.sh
@@ -42,11 +47,7 @@ jobs:
       - name: Build GSI
         run: |
           cd ErfanGSIs
-          echo "Starting build process..."
           sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }}
-          
-          echo "Listing output folder:"
-          ls -R output/
 
       - name: Compress and Upload
         run: |
