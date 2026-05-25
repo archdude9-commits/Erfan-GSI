@@ -21,7 +21,7 @@ env:
 
 jobs:
   build_tosasitill_GSI:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: 获取源代码
@@ -37,12 +37,12 @@ jobs:
       - name: 发送 Telegram 提醒消息 1/2
         uses: appleboy/telegram-action@master
         with:
-         to: 1214932938
-         token: ${{ secrets.TELEGRAM_TOKEN }}
-         message: tosasitill GSI 开始构建！
-                      构建开始时间：${{ env.BUILD_sTIME }}
-                         提交链接：${{ github.event.inputs.ROM_URL }}
-                             提交 GSI 类型：${{ github.event.inputs.ROM_TYPE }}
+          to: 1214932938
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: tosasitill GSI 开始构建！
+                   构建开始时间：${{ env.BUILD_sTIME }}
+                   提交链接：${{ github.event.inputs.ROM_URL }}
+                   提交 GSI 类型：${{ github.event.inputs.ROM_TYPE }}
 
       - name: 配置环境‌‌
         run: |
@@ -60,8 +60,8 @@ jobs:
 
       - name: 修复意外退出
         run: |
-              sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
-              sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
+          sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
+          sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
 
       - name: 建立并配置 ErfanGSI 工具所需环境
         run: |
@@ -90,11 +90,11 @@ jobs:
       - name: 发送 Telegram 提醒消息 2/2
         uses: appleboy/telegram-action@master
         with:
-            to: 1214932938
-            token: ${{ secrets.TELEGRAM_TOKEN }}
-            message: tosasitill GSI 构建成功!
-              构建 GSI 详细信息如下！
-            document: ${{ github.workspace }}/ErfanGSIs/build_info.txt
+          to: 1214932938
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: tosasitill GSI 构建成功!
+                   构建 GSI 详细信息如下！
+          document: ${{ github.workspace }}/ErfanGSIs/build_info.txt
 
       - name: 上传至 Github Releases
         if: ${{ github.event.inputs.ALI }} != '1'
