@@ -51,10 +51,13 @@ jobs:
         run: |
           sudo chmod 777 -R $GITHUB_WORKSPACE/ErfanGSIs
 
-      - name: 修复意外退出
+      - name: 修复意外退出 & Entschärfe pycrypto Ragebait
         run: |
           sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
           sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
+          # Hier wird pycrypto im Erfan-eigenen Setup blockiert:
+          sed -i 's/pycrypto//g' ErfanGSIs/setup.sh
+          sed -i 's/pip install/pip install --upgrade/g' ErfanGSIs/setup.sh
 
       - name: 建立并配置 ErfanGSI 工具所需环境
         run: |
