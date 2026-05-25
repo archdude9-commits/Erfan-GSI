@@ -4,80 +4,64 @@ on:
   workflow_dispatch:
     inputs:
       ROM_URL:
-        description: 'Direct link/直链'
+        description: 'Direct link to ROM'
         required: true
         default: 'https://cdnorg.d.miui.com/V14.0.4.0.TGCMIXM/miui_SPESGlobal_V14.0.4.0.TGCMIXM_69f8748327_13.0.zip'
       REPACK_NAME:
-        description: 'Compressed name/打包名称'
+        description: 'Output filename'
         required: true
-        default: 'a12MIUI14.7z'
+        default: 'output.7z'
       ROM_TYPE:
-        description: 'ROM type/ROM 类型'
+        description: 'ROM type (e.g., MIUI, Treble)'
         required: true
         default: 'MIUI'
 
 jobs:
-  build_tosasitill_GSI:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repo
         uses: actions/checkout@main
         with:
           path: ErfanGSIs
 
-      - name: Setup Python 3.8
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
-
-      - name: Install System Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev
-
-      - name: Clone ErfanGSI Tool
-        uses: actions/checkout@main
-        with:
-          repository: tosasitill/erfanSGSI
-          path: ErfanGSIs
-
-      - name: Prep and Patch
-        run: |
-          sudo chmod 777 -R $GITHUB_WORKSPACE/ErfanGSIs
-          # Entferne pycrypto aus setup.sh und erzwinge Upgrade
-          sed -i 's/pycrypto//g' ErfanGSIs/setup.sh
-          sed -i 's/pip install/pip install --upgrade/g' ErfanGSIs/setup.sh
-          # Deaktiviere Exit bei Fehlern im url2GSI Skript
-          sed -i 's/\|\| exit 1//g' ErfanGSIs/url2GSI.sh
-          sed -i 's/exit 1//g' ErfanGSIs/url2GSI.sh
-
-      - name: Setup Environment
-        run: |
-          sed -i 's/USE_MIRROR_FOR_PIP\=true/USE_MIRROR_FOR_PIP\=false/' ErfanGSIs/setup.sh
-          sudo bash ErfanGSIs/setup.sh
+          sudo apt install -y git wget gzip unzip curl axel aria2 zstd rename p7zip-full pigz liblzma-dev build-essential python3-dev simg2img
           pip3 install aligo pycryptodome
+
+      - name: Setup Tools
+        run: |
+          cd ErfanGSIs
+          # Fix setup script
+          sed -i 's/pycrypto//g' setup.sh
+          sed -i 's/pip install/pip install --upgrade/g' setup.sh
+          sudo bash setup.sh
 
       - name: Build GSI
         run: |
-          cd ${{ github.workspace }}/ErfanGSIs/
-          sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }}
+          cd ErfanGSIs
+          echo "Starting build process..."
+          # Build mit Error-Handling entfernt, um zu sehen was passiert
+          sudo bash ./url2GSI.sh --ab ${{ github.event.inputs.ROM_URL }} ${{ github.event.inputs.ROM_TYPE }} || echo "Build script finished with exit code"
+          
+          echo "Contents of output folder:"
+          ls -R output/ || echo "Output folder does not exist"
 
-      - name: Compress GSI
+      - name: Compress and Upload
         run: |
-          cd ${{ github.workspace }}/ErfanGSIs
-          mkdir -p upload_ab
+          cd ErfanGSIs
           if [ -d "output" ] && [ "$(ls -A output/)" ]; then
-            7za a -t7z -r output.7z output/*
-            mv output.7z upload_ab/${{ github.event.inputs.REPACK_NAME }}
+            7za a -t7z -r ${{ github.event.inputs.REPACK_NAME }} output/*
           else
-            echo "Build failed: output directory empty"
+            echo "Error: No files found to compress."
             exit 1
           fi
 
-      - name: Upload to Release
-        if: hashFiles('ErfanGSIs/upload_ab/*') != ''
+      - name: Upload Release
         uses: ncipollo/release-action@v1.12.0
         with:
-          artifacts: "ErfanGSIs/upload_ab/*"
+          artifacts: "ErfanGSIs/${{ github.event.inputs.REPACK_NAME }}"
           tag: "Build_${{ github.run_id }}"
           token: ${{ secrets.GITHUB_TOKEN }}
